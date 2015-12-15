@@ -29,8 +29,8 @@ class VariationalAutoencoder():
             self._mean_encoder = tf.Variable(init_uniform_scaled(hidden_dim, latent_dim))
             self._mean_encoder_bias = tf.Variable(tf.zeros([latent_dim]))
 
-            self._log_stddev_encoder = tf.Variable(init_uniform_scaled(hidden_dim, latent_dim))
-            self._log_stddev_encoder_bias = tf.Variable(tf.zeros([latent_dim]))
+            self._log_variance_encoder = tf.Variable(init_uniform_scaled(hidden_dim, latent_dim))
+            self._log_variance_encoder_bias = tf.Variable(tf.zeros([latent_dim]))
 
             self._decoder_W = tf.Variable(init_uniform_scaled(latent_dim, hidden_dim))
             self._decoder_bias = tf.Variable(tf.zeros([hidden_dim]))
@@ -74,45 +74,52 @@ class VariationalAutoencoder():
                     tf.matmul(h, self._mean_encoder) + self._mean_encoder_bias
                 )
 
-            latent_log_stddev = tf.nn.relu(
-                    tf.matmul(h, self._log_stddev_encoder) + self._log_stddev_encoder_bias
+            latent_log_variance = tf.nn.relu(
+                    tf.matmul(h, self._log_variance_encoder) + self._log_variance_encoder_bias
                 )
 
-        return (latent_mean, latent_log_stddev)
+        return (latent_mean, latent_log_variance)
 
-    def _loss(self, tol=1e-4):
+    def _evidence_lower_bound(self, tol=1e-4):
         """
             Variational objective function
 
-            ELBO = log joint log-likelihood(p, q) + log q
+            ELBO = E(log joint log-likelihood) + E(log q)
+                 = MC estimate of log joint + Entropy(q)
 
         """
         with self.graph.as_default():
 
             # Forward pass of data into latent space
-            mean_encoder, log_stddev_encoder = self._encode()
+            mean_encoder, log_variance_encoder = self._encode()
 
             random_noise = tf.random_normal(
                 (self.batch_size, self._latent_dim), 0, 1, dtype=tf.float32)
 
             # Reparameterization trick of re-scaling/transforming random error
-            z = mean_encoder + tf.exp(log_stddev_encoder) * random_noise            
+            std_dev = tf.sqrt(tf.exp(log_variance_encoder))
+            z = mean_encoder + std_dev * random_noise            
 
             # Reconstruction/decoing of latent space
             mean_decoder, _ = self._generate(z)
 
             # Bernoulli log-likelihood reconstruction
             # TODO: other distributon types
-            reconstruction_error = tf.reduce_sum(
-                    (self.x * tf.log(tol + mean_decoder)) 
-                        + ((1 - self.x) * tf.log(tol+ 1 - mean_decoder)), 1)
+
+            def bernoulli_log_joint(x):
+                return tf.reduce_sum(
+                    (x * tf.log(tol + mean_decoder))
+                        + ((1 - x) * tf.log(tol + 1 - mean_decoder)), 
+                    1)
+
+            p_log_joint = bernoulli_log_joint(self.x)
 
             # Gaussian entropy
             # Optimizing this smoothes out the variatonal distribution - occupying more states
             entropy = \
                 -0.5 * tf.reduce_sum(1 
-                                + log_stddev_encoder 
+                                + log_variance_encoder
                                 - tf.square(mean_encoder) 
-                                - tf.exp(log_stddev_encoder), 1) 
+                                - tf.exp(log_variance_encoder), 1) 
 
-        return tf.reduce_mean(reconstruction_error + entropy)
+        return tf.reduce_mean(p_log_joint - entropy)
