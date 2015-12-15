@@ -1,6 +1,8 @@
 import tensorflow as tf
 import numpy as np
 
+from initialization import xavier_glorot_initialization
+
 class VariationalAutoencoder():
     def __init__(self, 
                 input_dim, 
@@ -14,28 +16,23 @@ class VariationalAutoencoder():
         with self.graph.as_default():
             ## Input x variable
             self.x = tf.placeholder(tf.float32, shape=(None, input_dim))
-
-            def init_uniform_scaled(in_dim, out_dim):
-                extreme = np.sqrt(6.0 / (in_dim * out_dim))
-                return tf.random_uniform(
-                    (in_dim, out_dim), minval=-extreme, maxval=extreme, dtype=tf.float32)
-
+            
             self._latent_dim = latent_dim
             self.batch_size = batch_size
 
-            self._encoder_W = tf.Variable(init_uniform_scaled(input_dim, hidden_dim))
+            self._encoder_W = tf.Variable(xavier_glorot_initialization(input_dim, hidden_dim))
             self._encoder_bias = tf.Variable(tf.zeros([hidden_dim]))
 
-            self._mean_encoder = tf.Variable(init_uniform_scaled(hidden_dim, latent_dim))
+            self._mean_encoder = tf.Variable(xavier_glorot_initialization(hidden_dim, latent_dim))
             self._mean_encoder_bias = tf.Variable(tf.zeros([latent_dim]))
 
-            self._log_variance_encoder = tf.Variable(init_uniform_scaled(hidden_dim, latent_dim))
+            self._log_variance_encoder = tf.Variable(xavier_glorot_initialization(hidden_dim, latent_dim))
             self._log_variance_encoder_bias = tf.Variable(tf.zeros([latent_dim]))
 
-            self._decoder_W = tf.Variable(init_uniform_scaled(latent_dim, hidden_dim))
+            self._decoder_W = tf.Variable(xavier_glorot_initialization(latent_dim, hidden_dim))
             self._decoder_bias = tf.Variable(tf.zeros([hidden_dim]))
 
-            self._mean_decoder = tf.Variable(init_uniform_scaled(hidden_dim, input_dim))
+            self._mean_decoder = tf.Variable(xavier_glorot_initialization(hidden_dim, input_dim))
             self._mean_decoder_bias = tf.Variable(tf.zeros([input_dim]))
 
     def _generate(self, z):    
