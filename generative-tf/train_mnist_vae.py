@@ -13,7 +13,8 @@ def train_test_mnist_vae(epochs,
                          latent_dim=10,
                          batch_size=100,
                          optimizer='adam',
-                         importance_weighting=False
+                         importance_weighting=False,
+                         test_full = False
                         ):
 
     input_dim = 784
@@ -40,9 +41,16 @@ def train_test_mnist_vae(epochs,
                 sess.run(opt, feed_dict={vae.x: batch_xs})
                 if i % print_n == 0:
                     elbo = sess.run(vae._evidence_lower_bound(), feed_dict={vae.x: batch_xs})
-                    test_elbo = sess.run(vae._evidence_lower_bound(), feed_dict={vae.x: mnist.test.images[:batch_size, ::]})
+                    if test_full:
+                        test_elbo = 0
+                        n_test = mnist.test.images.shape[0]
+                        for i in xrange(n_test / batch_size):
+                            test_batch = mnist.test.images[i * batch_size: i * batch_size + batch_size, ::]
+                            test_elbo += sess.run(vae._evidence_lower_bound(), feed_dict={vae.x: test_batch})
+                    else:
+                        test_elbo = sess.run(vae._evidence_lower_bound(), feed_dict={vae.x: mnist.test.images[:batch_size, ::]})
 
-                    print("At batch: {}; batch ELBO: {}; test batch ELBO {}".format(i, elbo, test_elbo))
+                    print("At batch: {}; batch ELBO: {}; test batch ELBO {}".format(i, elbo, test_elbo/float(n_test)))
 
 
 if __name__ == '__main__':
