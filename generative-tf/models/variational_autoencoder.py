@@ -80,7 +80,7 @@ class VariationalAutoencoder():
 
         return (latent_mean, latent_log_variance)
 
-    def _evidence_lower_bound(self, tol=1e-4):
+    def _evidence_lower_bound(self, importance_weighting=False, tol=1e-4):
         """
             Variational objective function
 
@@ -122,4 +122,13 @@ class VariationalAutoencoder():
                                 - tf.square(mean_encoder) 
                                 - tf.exp(log_variance_encoder), 1) 
 
-        return tf.reduce_mean(p_log_joint - entropy)
+            if importance_weighting:
+                log_weights = (p_log_joint - entropy) 
+                log_weights_scaled = log_weights - log_weights.max()
+                weights = tf.exp(log_weights_scaled)
+                weights_normalized = weights / weights.sum()
+                objective = tf.dot(log_weights, weights_normalized)
+            else:
+                objective = tf.reduce_mean(p_log_joint - entropy)
+
+        return objective

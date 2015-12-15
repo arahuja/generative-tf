@@ -13,6 +13,7 @@ def train_test_mnist_vae(epochs,
                          latent_dim=10,
                          batch_size=100,
                          optimizer='adam',
+                         importance_weighting=False
                         ):
 
     input_dim = 784
@@ -25,7 +26,7 @@ def train_test_mnist_vae(epochs,
             )
     with vae.graph.as_default():
         if optimizer == 'adam':
-            opt = tf.train.AdamOptimizer(1e-4).minimize(-vae._evidence_lower_bound())
+            opt = tf.train.AdamOptimizer(1e-4).minimize(-vae._evidence_lower_bound(importance_weighting=importance_weighting))
         elif optimizer == 'rmsprop':
             opt = tf.train.RMSPropOptimizer(learning_rate=0.001, decay=0.9).minimize(-vae._evidence_lower_bound())
         else:
@@ -40,7 +41,7 @@ def train_test_mnist_vae(epochs,
                 if i % print_n == 0:
                     elbo = sess.run(vae._evidence_lower_bound(), feed_dict={vae.x: batch_xs})
                     test_elbo = sess.run(vae._evidence_lower_bound(), feed_dict={vae.x: mnist.test.images[:batch_size, ::]})
-             
+
                     print("At batch: {}; batch ELBO: {}; test batch ELBO {}".format(i, elbo, test_elbo))
 
 
@@ -55,6 +56,8 @@ if __name__ == '__main__':
 
     parser.add_argument('--optimizer', dest='optimizer', default='adam', type=str)
 
+    parser.add_argument('--importance-weighting', dest='importance_weighting', action='store_true')
+
     args = parser.parse_args()
 
     train_test_mnist_vae(args.epochs,
@@ -62,5 +65,6 @@ if __name__ == '__main__':
         hidden_dim=args.hidden_dim,
         latent_dim=args.latent_dim,
         batch_size=args.batch_size,
-        optimizer=args.optimizer
+        optimizer=args.optimizer,
+        importance_weighting=args.importance_weighting
     )
