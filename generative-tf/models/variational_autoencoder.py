@@ -1,5 +1,4 @@
 import tensorflow as tf
-import numpy as np
 
 from initialization import xavier_glorot_initialization
 
