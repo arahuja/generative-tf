@@ -8,14 +8,19 @@ class VariationalAutoencoder():
                 latent_dim, 
                 hidden_dim=10, 
                 batch_size=100, 
-                num_layers=0):
+                num_layers=0,
+                activation_func=tf.nn.relu,
+                output_activation_func=tf.nn.sigmoid):
 
         self.graph = tf.Graph()
+        self.activation_func = activation_func
+        self.output_activation_func = output_activation_func
 
         with self.graph.as_default():
             ## Input x variable
             self.x = tf.placeholder(tf.float32, shape=(None, input_dim))
-            
+         
+            ## Dimension of the latent variables mu/mean and log_variance
             self._latent_dim = latent_dim
             self.batch_size = batch_size
 
@@ -34,16 +39,19 @@ class VariationalAutoencoder():
             self._mean_decoder = tf.Variable(xavier_glorot_initialization(hidden_dim, input_dim))
             self._mean_decoder_bias = tf.Variable(tf.zeros([input_dim]))
 
-    def _generate(self, z):    
+    def _generate(self,
+                 z,
+                 activation_func=tf.nn.softplus,
+                 output_activation_func=tf.nn.sigmoid):    
         with self.graph.as_default():   
 
             # Compute the hidden state from latent variables  
-            h = tf.nn.softplus(
+            h = activation_func(
                     tf.matmul(z, self._decoder_W) + self._decoder_bias
                 )
 
             # Compute the reconstruction from hidden state
-            mean = tf.nn.sigmoid(
+            mean = output_activation_func(
                     tf.matmul(h, self._mean_decoder) + self._mean_decoder_bias
                 )
 
@@ -62,21 +70,23 @@ class VariationalAutoencoder():
 
         """
         with self.graph.as_default():
-            h = tf.nn.relu(
+            h = self.activation_func(
                     tf.matmul(self.x, self._encoder_W) + self._encoder_bias
                 )
 
-            latent_mean = tf.nn.relu(
+            latent_mean = self.activation_func(
                     tf.matmul(h, self._mean_encoder) + self._mean_encoder_bias
                 )
 
-            latent_log_variance = tf.nn.relu(
+            latent_log_variance = self.activation_func(
                     tf.matmul(h, self._log_variance_encoder) + self._log_variance_encoder_bias
                 )
 
         return (latent_mean, latent_log_variance)
 
-    def _evidence_lower_bound(self, importance_weighting=False, tol=1e-4):
+    def _evidence_lower_bound(self,
+                              importance_weighting=False,
+                              tol=1e-4):
         """
             Variational objective function
 
