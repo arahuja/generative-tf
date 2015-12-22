@@ -29,7 +29,7 @@ def train_test_mnist_vae(epochs,
         if optimizer == 'adam':
             opt = tf.train.AdamOptimizer(1e-4).minimize(-vae._evidence_lower_bound(importance_weighting=importance_weighting))
         elif optimizer == 'rmsprop':
-            opt = tf.train.RMSPropOptimizer(learning_rate=0.001, decay=0.9).minimize(-vae._evidence_lower_bound())
+            opt = tf.train.RMSPropOptimizer(learning_rate=0.001, decay=0.9).minimize(-vae._evidence_lower_bound(importance_weighting=importance_weighting))
         else:
             raise ValueError("Optimizer '{}' is not supported".format(optimizer))
 
@@ -50,7 +50,7 @@ def train_test_mnist_vae(epochs,
                     else:
                         test_elbo = sess.run(vae._evidence_lower_bound(), feed_dict={vae.x: mnist.test.images[:batch_size, ::]})
 
-                    print("At batch: {}; batch ELBO: {}; test batch ELBO {}".format(i, elbo, test_elbo/float(n_test)))
+                    print("At batch: {}; batch ELBO: {}; test batch ELBO {}".format(i, elbo, test_elbo))
 
 
 if __name__ == '__main__':
