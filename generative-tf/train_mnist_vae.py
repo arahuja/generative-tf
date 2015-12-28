@@ -1,6 +1,7 @@
 import argparse
 import tensorflow as tf
 from tensorflow.examples.tutorials.mnist import input_data
+import time
 
 from models.variational_autoencoder import VariationalAutoencoder
 
@@ -14,7 +15,7 @@ def train_test_mnist_vae(epochs,
                          batch_size=100,
                          optimizer='adam',
                          importance_weighting=False,
-                         test_full = False
+                         test_full=False
                         ):
 
     input_dim = 784
@@ -36,6 +37,9 @@ def train_test_mnist_vae(epochs,
         with tf.Session(graph=vae.graph) as sess:
             init = tf.initialize_all_variables()
             sess.run(init)
+            start_time = time.time()
+            current_start_time = start_time
+
             for i in range(epochs):
                 batch_xs, batch_ys = mnist.train.next_batch(batch_size)
                 sess.run(opt, feed_dict={vae.x: batch_xs})
@@ -49,8 +53,18 @@ def train_test_mnist_vae(epochs,
                             test_elbo += sess.run(vae._evidence_lower_bound(), feed_dict={vae.x: test_batch})
                     else:
                         test_elbo = sess.run(vae._evidence_lower_bound(), feed_dict={vae.x: mnist.test.images[:batch_size, ::]})
-
-                    print("At batch: {}; batch ELBO: {}; test batch ELBO {}".format(i, elbo, test_elbo))
+                    current_time = time.time()
+                    time_elapsed = current_time - current_start_time
+                    time_per_epoch = (current_time - start_time) / (i + 1)
+                    current_start_time = current_time
+                    print("""
+                            At batch: {}
+                                batch ELBO: {}
+                                test batch ELBO {}, 
+                                time elapsed {:.2}s,
+                                time per epoch {:.2}s
+                           """.format(i, elbo, test_elbo, time_elapsed, time_per_epoch)
+                           )
 
 
 if __name__ == '__main__':
@@ -67,7 +81,6 @@ if __name__ == '__main__':
     parser.add_argument('--importance-weighting', dest='importance_weighting', action='store_true')
 
     args = parser.parse_args()
-
     train_test_mnist_vae(args.epochs,
         args.print_n,
         hidden_dim=args.hidden_dim,
